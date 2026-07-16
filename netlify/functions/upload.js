@@ -96,10 +96,13 @@ exports.handler = async (event) => {
       };
     }
 
+    // TODO: once the root cause is identified, tighten this back to a
+    // generic message.  Left verbose for now so the real error is visible
+    // in the browser UI during debugging.
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: "Internal server error during upload." }),
+      body: JSON.stringify({ error: `DB error: ${msg}` }),
     };
   }
 };

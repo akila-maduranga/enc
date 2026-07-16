@@ -81,12 +81,14 @@ function makeThumbnailBlob(file) {
 const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("fileInput");
 const sealBtn = document.getElementById("sealBtn");
+const sendTgBtn = document.getElementById("sendTgBtn");
 const ledger = document.getElementById("ledger");
 const captionInput = document.getElementById("caption");
 const maxDeliveriesInput = document.getElementById("maxDeliveries");
 const uploadTokenInput = document.getElementById("uploadToken");
 
 let selectedFile = null;
+let lastUploadedId = null;
 
 function logLine(text, state = "pending") {
   const li = document.createElement("li");
@@ -261,9 +263,11 @@ sealBtn.addEventListener("click", async () => {
     }
     
     const { id } = await res.json();
+    lastUploadedId = id;
 
     line.dataset.state = "ok";
     line.innerHTML = `<span>✅ Sealed ✓ ${selectedFile.name}</span><span style="font-family:monospace;font-size:11px;color:var(--indigo)">${id}</span>`;
+    sendTgBtn.disabled = false;
     
     captionInput.value = "";
     maxDeliveriesInput.value = "";
@@ -277,6 +281,51 @@ sealBtn.addEventListener("click", async () => {
     if (!selectedFile) {
       sealBtn.disabled = true;
     }
+  }
+});
+
+// --- Send to Telegram Button ---
+
+sendTgBtn.addEventListener("click", async () => {
+  if (!lastUploadedId) {
+    logLine("❌ No uploaded image to send", "error");
+    return;
+  }
+
+  if (!uploadTokenInput.value) {
+    logLine("❌ Missing upload token", "error");
+    return;
+  }
+
+  sendTgBtn.disabled = true;
+  const line = logLine(`📤 Sending ${lastUploadedId} to Telegram…`);
+
+  try {
+    const res = await fetch("/api/post-to-channel", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-upload-token": uploadTokenInput.value,
+      },
+      body: JSON.stringify({ imageId: lastUploadedId }),
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Telegram post failed: ${res.status}`;
+      try {
+        const errorData = await res.json();
+        if (errorData.error) errorMsg = errorData.error;
+      } catch (e) { /* ignore */ }
+      throw new Error(errorMsg);
+    }
+
+    line.dataset.state = "ok";
+    line.innerHTML = `<span>✅ Posted to Telegram ✓</span><span style="font-family:monospace;font-size:11px;color:var(--brass)">${lastUploadedId}</span>`;
+    lastUploadedId = null;
+  } catch (err) {
+    line.dataset.state = "error";
+    line.innerHTML = `<span>❌ ${err.message}</span>`;
+    sendTgBtn.disabled = false;
   }
 });
 
