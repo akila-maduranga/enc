@@ -11,8 +11,7 @@ S1pnEzNJ2qN+vML3NQsou+RohVXvhyaCFGYhVerwif0PV70zAYUZ/zEgQDxZbG8+
 0UASVEBFaN1oj+RUoHBskos9sV5V9BC1ZRpu62xodtd1Lt3RwmGrAIWfEbxKXM8W
 dNKVaISoFkE8/rX7MDmD3AAfBJ0CPVG9Lc/skAGSXdTrIGhITNXFltmAbg7cfbmT
 kwIDAQAB
------END PUBLIC KEY-----
-`;
+-----END PUBLIC KEY-----`;
 
 const THUMB_MAX_DIMENSION = 480;
 
@@ -43,20 +42,13 @@ function bufToBase64(buf) {
   return btoa(binary);
 }
 
-/**
- * Generates a fresh AES-256-GCM key, encrypts `plaintextBuffer` with a
- * random 12-byte IV, and wraps the key with the server's RSA-OAEP public
- * key. Nothing here is ever sent anywhere except the three base64 outputs.
- */
 async function sealBuffer(plaintextBuffer, serverPublicKey) {
   const dataKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-
   const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, dataKey, plaintextBuffer);
   const wrappedKey = await crypto.subtle.wrapKey("raw", dataKey, serverPublicKey, { name: "RSA-OAEP" });
-
   return {
-    ciphertext: bufToBase64(ciphertext), // GCM auth tag is appended automatically by SubtleCrypto
+    ciphertext: bufToBase64(ciphertext),
     iv: bufToBase64(iv),
     wrappedKey: bufToBase64(wrappedKey),
   };
@@ -71,7 +63,7 @@ function makeThumbnailBlob(file) {
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext("2d");
-      ctx.filter = "blur(6px)"; // light obscuring -- this is a teaser, not the delivered image
+      ctx.filter = "blur(6px)";
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("thumbnail encode failed"))), "image/jpeg", 0.72);
     };
@@ -103,7 +95,6 @@ function logLine(text, state = "pending") {
 function selectFile(file) {
   if (!file) return;
   
-  // Validate it's an image
   if (!file.type.startsWith('image/')) {
     logLine(`❌ "${file.name}" is not an image`, "error");
     return;
@@ -111,7 +102,6 @@ function selectFile(file) {
   
   selectedFile = file;
   
-  // Update dropzone UI
   const label = dropzone.querySelector(".dropzone__label");
   const hint = dropzone.querySelector(".dropzone__hint");
   
@@ -125,10 +115,7 @@ function selectFile(file) {
     hint.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB — click or drop another to change`;
   }
   
-  // Enable the seal button
   sealBtn.disabled = false;
-  
-  // Log selection
   logLine(`📎 Selected: ${file.name}`, "ok");
 }
 
@@ -154,14 +141,11 @@ function resetDropzone() {
 
 // --- Event Listeners ---
 
-// Click to open file picker
 dropzone.addEventListener("click", (e) => {
-  // Prevent triggering if clicking on child elements that might bubble
   if (e.target.closest('button')) return;
   fileInput.click();
 });
 
-// Keyboard support for accessibility
 dropzone.addEventListener("keydown", (e) => {
   if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
@@ -169,7 +153,6 @@ dropzone.addEventListener("keydown", (e) => {
   }
 });
 
-// Drag and drop events
 dropzone.addEventListener("dragover", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -193,7 +176,6 @@ dropzone.addEventListener("drop", (e) => {
   }
 });
 
-// File input change
 fileInput.addEventListener("change", () => {
   if (fileInput.files && fileInput.files.length > 0) {
     selectFile(fileInput.files[0]);
@@ -215,8 +197,9 @@ sealBtn.addEventListener("click", async () => {
     return;
   }
   
-  if (SERVER_PUBLIC_KEY_PEM.includes("REPLACE_ME") || SERVER_PUBLIC_KEY_PEM.includes("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo0bsg29ywJvn7l3hMtxw")) {
-    logLine("❌ Set SERVER_PUBLIC_KEY_PEM in app.js first (run scripts/generate-keys.js)", "error");
+  // Check if public key is properly set
+  if (SERVER_PUBLIC_KEY_PEM.includes("REPLACE_ME") || SERVER_PUBLIC_KEY_PEM.length < 100) {
+    logLine("❌ Server public key is not configured correctly", "error");
     return;
   }
 
@@ -225,7 +208,6 @@ sealBtn.addEventListener("click", async () => {
 
   try {
     const serverPublicKey = await importServerPublicKey();
-
     const fullBuffer = await selectedFile.arrayBuffer();
     const thumbBlob = await makeThumbnailBlob(selectedFile);
     const thumbBuffer = await thumbBlob.arrayBuffer();
@@ -269,7 +251,6 @@ sealBtn.addEventListener("click", async () => {
     line.dataset.state = "ok";
     line.innerHTML = `<span>✅ Sealed ✓ ${selectedFile.name}</span><span style="font-family:monospace;font-size:11px;color:var(--indigo)">${id}</span>`;
     
-    // Clear form after successful upload
     captionInput.value = "";
     maxDeliveriesInput.value = "";
     resetDropzone();
@@ -279,7 +260,6 @@ sealBtn.addEventListener("click", async () => {
     line.innerHTML = `<span>❌ Failed: ${err.message}</span>`;
     sealBtn.disabled = false;
   } finally {
-    // Only re-enable if we didn't clear the selection
     if (!selectedFile) {
       sealBtn.disabled = true;
     }
