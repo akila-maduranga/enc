@@ -14,6 +14,10 @@ kwIDAQAB
 -----END PUBLIC KEY-----`;
 
 const THUMB_MAX_DIMENSION = 480;
+// Netlify Functions cap the request body at ~6 MB.  Base64 adds ~33 %
+// overhead to the encrypted bytes, so the *original* file must stay well
+// under that.  4 MB raw → ~5.6 MB base64 ciphertext → safe margin.
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 function pemToArrayBuffer(pem) {
   const b64 = pem.replace(/-----BEGIN PUBLIC KEY-----/, "")
@@ -200,6 +204,16 @@ sealBtn.addEventListener("click", async () => {
   // Check if public key is properly set
   if (SERVER_PUBLIC_KEY_PEM.includes("REPLACE_ME") || SERVER_PUBLIC_KEY_PEM.length < 100) {
     logLine("❌ Server public key is not configured correctly", "error");
+    return;
+  }
+
+  // --- Client-side size guard (fail fast, avoid 502) ------------------------
+  if (selectedFile.size > MAX_FILE_BYTES) {
+    logLine(
+      `❌ File too large (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). ` +
+      `Maximum is ${(MAX_FILE_BYTES / 1024 / 1024).toFixed(0)} MB — resize or compress first.`,
+      "error"
+    );
     return;
   }
 
