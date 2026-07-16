@@ -3,9 +3,15 @@
 // This is the *public* half -- safe to ship to the browser. The private half
 // stays server-side only (RSA_PRIVATE_KEY env var).
 // ---------------------------------------------------------------------------
-const SERVER_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
-REPLACE_ME_WITH_YOUR_GENERATED_PUBLIC_KEY
------END PUBLIC KEY-----`;
+const SERVER_PUBLIC_KEY_PEM = -----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo0bsg29ywJvn7l3hMtxw
+oWbxUEJ0Nf0PVHGoxnU+KHXXl5fmz/MtG+4wkKmlez33YcO4cNV5y+Dvu//Y2DG8
+ZA5iZXTDG26fZeIZnWL122YCXKbo+ytMTQSeZ/r/mmK2FFy7UA09wY4bXf9iKFNk
+S1pnEzNJ2qN+vML3NQsou+RohVXvhyaCFGYhVerwif0PV70zAYUZ/zEgQDxZbG8+
+0UASVEBFaN1oj+RUoHBskos9sV5V9BC1ZRpu62xodtd1Lt3RwmGrAIWfEbxKXM8W
+dNKVaISoFkE8/rX7MDmD3AAfBJ0CPVG9Lc/skAGSXdTrIGhITNXFltmAbg7cfbmT
+kwIDAQAB
+-----END PUBLIC KEY-----;
 
 const THUMB_MAX_DIMENSION = 480;
 
