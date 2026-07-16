@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vault — encrypted image intake</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="frame">
+    <header class="frame__header">
+      <div class="mark" aria-hidden="true">⌘</div>
+      <div>
+        <h1>Vault</h1>
+        <p class="sub">Images are sealed in this browser. The server only ever holds ciphertext.</p>
+      </div>
+    </header>
+
+    <main class="panel">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose an image to encrypt">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+        <p class="dropzone__label">Drop an image, or click to choose one</p>
+        <p class="dropzone__hint">Encryption happens here, on this device, before anything is sent.</p>
+      </div>
+
+      <div class="fields">
+        <label class="field">
+          <span>Caption <em>(sent with the image)</em></span>
+          <input type="text" id="caption" maxlength="1024" />
+        </label>
+        <label class="field">
+          <span>Max deliveries <em>(blank = unlimited reveals)</em></span>
+          <input type="number" id="maxDeliveries" min="1" placeholder="e.g. 1" />
+        </label>
+        <label class="field">
+          <span>Upload token</span>
+          <input type="password" id="uploadToken" autocomplete="off" />
+        </label>
+      </div>
+
+      <ol class="ledger" id="ledger" aria-live="polite"></ol>
+
+      <button class="seal" id="sealBtn" disabled>Seal &amp; upload</button>
+    </main>
+
+    <footer class="frame__footer">
+      <p>Once sealed, this device forgets the key. Only the server's private key (and, at delivery time, Telegram) will ever see the plaintext again — briefly, in memory, on request.</p>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

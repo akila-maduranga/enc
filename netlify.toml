@@ -1,0 +1,21 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["telegram"]
+
+# The webhook + reveal-photo call has to: fetch from Postgres, RSA-unwrap a key,
+# AES-GCM decrypt, open an MTProto connection, and upload to Telegram. That's
+# comfortably over the 10s default. This requests the paid-plan ceiling, but
+# Netlify support currently has to manually enable extended timeouts per site
+# even on Pro/Enterprise -- setting this alone may not be enough. See README
+# "Netlify timeout gotcha" before you rely on it.
+[functions."telegram-webhook"]
+  timeout = 26
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
