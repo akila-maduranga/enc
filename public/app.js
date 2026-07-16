@@ -3,7 +3,7 @@
 // This is the *public* half -- safe to ship to the browser. The private half
 // stays server-side only (RSA_PRIVATE_KEY env var).
 // ---------------------------------------------------------------------------
-const SERVER_PUBLIC_KEY_PEM = '-----BEGIN PUBLIC KEY-----
+const SERVER_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo0bsg29ywJvn7l3hMtxw
 oWbxUEJ0Nf0PVHGoxnU+KHXXl5fmz/MtG+4wkKmlez33YcO4cNV5y+Dvu//Y2DG8
 ZA5iZXTDG26fZeIZnWL122YCXKbo+ytMTQSeZ/r/mmK2FFy7UA09wY4bXf9iKFNk
@@ -11,7 +11,7 @@ S1pnEzNJ2qN+vML3NQsou+RohVXvhyaCFGYhVerwif0PV70zAYUZ/zEgQDxZbG8+
 0UASVEBFaN1oj+RUoHBskos9sV5V9BC1ZRpu62xodtd1Lt3RwmGrAIWfEbxKXM8W
 dNKVaISoFkE8/rX7MDmD3AAfBJ0CPVG9Lc/skAGSXdTrIGhITNXFltmAbg7cfbmT
 kwIDAQAB
------END PUBLIC KEY-----';
+-----END PUBLIC KEY-----`;
 
 const THUMB_MAX_DIMENSION = 480;
 
@@ -99,36 +99,128 @@ function logLine(text, state = "pending") {
   return li;
 }
 
-dropzone.addEventListener("click", () => fileInput.click());
-dropzone.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
-dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("is-dragover"); });
-dropzone.addEventListener("dragleave", () => dropzone.classList.remove("is-dragover"));
-dropzone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropzone.classList.remove("is-dragover");
-  if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener("change", () => { if (fileInput.files[0]) selectFile(fileInput.files[0]); });
-
 function selectFile(file) {
-  selectedFile = file;
-  dropzone.querySelector(".dropzone__label").textContent = file.name;
-  sealBtn.disabled = false;
-}
-
-sealBtn.addEventListener("click", async () => {
-  if (!selectedFile) return;
-  if (!uploadTokenInput.value) {
-    logLine("Missing upload token", "error");
+  if (!file) return;
+  
+  // Validate it's an image
+  if (!file.type.startsWith('image/')) {
+    logLine(`❌ "${file.name}" is not an image`, "error");
     return;
   }
-  if (SERVER_PUBLIC_KEY_PEM.includes("REPLACE_ME")) {
-    logLine("Set SERVER_PUBLIC_KEY_PEM in app.js first (run scripts/generate-keys.js)", "error");
+  
+  selectedFile = file;
+  
+  // Update dropzone UI
+  const label = dropzone.querySelector(".dropzone__label");
+  const hint = dropzone.querySelector(".dropzone__hint");
+  
+  if (label) {
+    label.textContent = `📷 ${file.name}`;
+    label.style.fontWeight = "500";
+    label.style.color = "var(--ink)";
+  }
+  
+  if (hint) {
+    hint.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB — click or drop another to change`;
+  }
+  
+  // Enable the seal button
+  sealBtn.disabled = false;
+  
+  // Log selection
+  logLine(`📎 Selected: ${file.name}`, "ok");
+}
+
+function resetDropzone() {
+  selectedFile = null;
+  fileInput.value = "";
+  
+  const label = dropzone.querySelector(".dropzone__label");
+  const hint = dropzone.querySelector(".dropzone__hint");
+  
+  if (label) {
+    label.textContent = "Drop an image, or click to choose one";
+    label.style.fontWeight = "";
+    label.style.color = "";
+  }
+  
+  if (hint) {
+    hint.textContent = "Encryption happens here, on this device, before anything is sent.";
+  }
+  
+  sealBtn.disabled = true;
+}
+
+// --- Event Listeners ---
+
+// Click to open file picker
+dropzone.addEventListener("click", (e) => {
+  // Prevent triggering if clicking on child elements that might bubble
+  if (e.target.closest('button')) return;
+  fileInput.click();
+});
+
+// Keyboard support for accessibility
+dropzone.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    fileInput.click();
+  }
+});
+
+// Drag and drop events
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropzone.classList.add("is-dragover");
+});
+
+dropzone.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropzone.classList.remove("is-dragover");
+});
+
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropzone.classList.remove("is-dragover");
+  
+  const files = e.dataTransfer.files;
+  if (files && files.length > 0) {
+    selectFile(files[0]);
+  }
+});
+
+// File input change
+fileInput.addEventListener("change", () => {
+  if (fileInput.files && fileInput.files.length > 0) {
+    selectFile(fileInput.files[0]);
+  } else {
+    resetDropzone();
+  }
+});
+
+// --- Seal Button ---
+
+sealBtn.addEventListener("click", async () => {
+  if (!selectedFile) {
+    logLine("❌ No file selected", "error");
+    return;
+  }
+  
+  if (!uploadTokenInput.value) {
+    logLine("❌ Missing upload token", "error");
+    return;
+  }
+  
+  if (SERVER_PUBLIC_KEY_PEM.includes("REPLACE_ME") || SERVER_PUBLIC_KEY_PEM.includes("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo0bsg29ywJvn7l3hMtxw")) {
+    logLine("❌ Set SERVER_PUBLIC_KEY_PEM in app.js first (run scripts/generate-keys.js)", "error");
     return;
   }
 
   sealBtn.disabled = true;
-  const line = logLine(`Sealing ${selectedFile.name}…`);
+  const line = logLine(`🔐 Sealing ${selectedFile.name}…`);
 
   try {
     const serverPublicKey = await importServerPublicKey();
@@ -142,36 +234,57 @@ sealBtn.addEventListener("click", async () => {
       sealBuffer(thumbBuffer, serverPublicKey),
     ]);
 
+    const payload = {
+      fullCiphertext: full.ciphertext,
+      fullIv: full.iv,
+      fullKeyWrapped: full.wrappedKey,
+      thumbCiphertext: thumb.ciphertext,
+      thumbIv: thumb.iv,
+      thumbKeyWrapped: thumb.wrappedKey,
+      caption: captionInput.value || undefined,
+      maxDeliveries: maxDeliveriesInput.value ? Number(maxDeliveriesInput.value) : undefined,
+    };
+
     const res = await fetch("/api/upload", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-upload-token": uploadTokenInput.value,
       },
-      body: JSON.stringify({
-        fullCiphertext: full.ciphertext,
-        fullIv: full.iv,
-        fullKeyWrapped: full.wrappedKey,
-        thumbCiphertext: thumb.ciphertext,
-        thumbIv: thumb.iv,
-        thumbKeyWrapped: thumb.wrappedKey,
-        caption: captionInput.value || undefined,
-        maxDeliveries: maxDeliveriesInput.value ? Number(maxDeliveriesInput.value) : undefined,
-      }),
+      body: JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+    if (!res.ok) {
+      let errorMsg = `Upload failed: ${res.status}`;
+      try {
+        const errorData = await res.json();
+        if (errorData.error) errorMsg = errorData.error;
+      } catch (e) { /* ignore */ }
+      throw new Error(errorMsg);
+    }
+    
     const { id } = await res.json();
 
     line.dataset.state = "ok";
-    line.innerHTML = `<span>Sealed ✓ ${selectedFile.name}</span><span>${id}</span>`;
+    line.innerHTML = `<span>✅ Sealed ✓ ${selectedFile.name}</span><span style="font-family:monospace;font-size:11px;color:var(--indigo)">${id}</span>`;
+    
+    // Clear form after successful upload
+    captionInput.value = "";
+    maxDeliveriesInput.value = "";
+    resetDropzone();
+    
   } catch (err) {
     line.dataset.state = "error";
-    line.innerHTML = `<span>Failed: ${err.message}</span>`;
+    line.innerHTML = `<span>❌ Failed: ${err.message}</span>`;
+    sealBtn.disabled = false;
   } finally {
-    selectedFile = null;
-    fileInput.value = "";
-    dropzone.querySelector(".dropzone__label").textContent = "Drop an image, or click to choose one";
-    sealBtn.disabled = true;
+    // Only re-enable if we didn't clear the selection
+    if (!selectedFile) {
+      sealBtn.disabled = true;
+    }
   }
 });
+
+// --- Initialize ---
+resetDropzone();
+logLine("🟢 Ready — drop an image or click the box above", "ok");
